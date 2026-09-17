@@ -3,34 +3,32 @@
 [![Herdr Plugin](https://img.shields.io/badge/herdr-plugin-blue.svg)](https://herdr.dev)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html)
 
-tmux-style MRU **last workspace toggle** for [Herdr](https://herdr.dev) with automatic per-workspace active tab restoration.
-
-Jump back and forth between your most recent workspaces with a single key combination (e.g. `prefix + shift + l`), landing on the exact tab/window you were working in.
+A Herdr plugin providing tmux-style most-recently-used (MRU) workspace toggling with per-workspace active tab restoration.
 
 ---
 
-## Highlights
+## Features
 
-- 🔄 **tmux-Style MRU Stack:** Toggles seamlessly between your current and previous workspace (A ↔ B) without clearing history on consecutive toggles.
-- 📑 **Per-Workspace Tab Restoration:** Remembers which tab was active in each workspace. Switching back restores that tab instead of resetting to the workspace default.
-- ⚡ **Zero Build / Zero Dependencies:** Pure Python 3 standard library (`fcntl`, `json`, `subprocess`, `os`, `pathlib`). No Rust/Cargo compiler, Go toolchain, or `pip` dependencies required.
-- 🛡️ **Race-Condition Safe & Atomic:** Uses POSIX file locking (`fcntl.flock`) and atomic file replacement (`os.replace`) to ensure asynchronous Herdr events never corrupt state.
-- 🩹 **Self-Healing State:** Reconciles against live Herdr state (`herdr workspace list`) on every toggle. Seamlessly prunes closed workspaces and auto-recovers even if an event hook is dropped.
-- 🪶 **No Background Daemon:** Spawns on-demand via Herdr's native event hooks in ~70ms without persistent background processes or socket leaks.
+- **MRU Workspace Navigation:** Toggles between the current and previous workspace (A ↔ B) without losing history on repeated toggles.
+- **Per-Workspace Tab Memory:** Tracks which tab was active in each workspace and restores focus to that specific tab upon switching back.
+- **Zero Build Dependencies:** Written in Python 3 using only standard library modules (`fcntl`, `json`, `subprocess`, `os`, `pathlib`). No compilers or external packages required.
+- **Atomic State Persistence:** Uses POSIX file locks (`fcntl.flock`) and atomic file replacement (`os.replace`) to prevent state corruption across concurrent Herdr event hooks.
+- **Live State Reconciliation:** Queries `herdr workspace list` during toggle actions to validate IDs and prune closed workspaces from the stack.
+- **No Background Daemon:** Executes on-demand through Herdr's native action and event hooks.
 
 ---
 
 ## Requirements
 
-- [Herdr](https://herdr.dev) `>= 0.7.0`
-- `python3` (included by default on macOS, Ubuntu, Fedora, Debian, and Arch)
-- macOS or Linux
+- [Herdr](https://herdr.dev) >= 0.7.0
+- Python >= 3.8
+- Linux or macOS
 
 ---
 
 ## Installation
 
-Install directly via Herdr's plugin manager:
+Install via Herdr's plugin manager:
 
 ```bash
 herdr plugin install akpw/herdr-last-workspace --yes
@@ -38,7 +36,7 @@ herdr plugin install akpw/herdr-last-workspace --yes
 
 ### Local Development / Linking
 
-To link a local clone for development:
+To link a local checkout:
 
 ```bash
 git clone https://github.com/akpw/herdr-last-workspace.git
@@ -51,16 +49,11 @@ Verify installation:
 herdr plugin list
 ```
 
-You should see:
-```text
-- akpw.last-workspace (Last Workspace) enabled [...]
-```
-
 ---
 
 ## Keybinding Setup
 
-Add the toggle command to your Herdr configuration (`~/.config/herdr/config.toml`):
+Add the action binding to `~/.config/herdr/config.toml`:
 
 ```toml
 [[keys.command]]
@@ -70,35 +63,34 @@ command = "akpw.last-workspace.toggle"
 description = "Last workspace"
 ```
 
-*Feel free to adjust the `key` shortcut to your preference (e.g. `prefix+l`, `ctrl+\`, etc.).*
-
 ---
 
 ## How It Works
 
-1. **Event Hooks:** Subscribes to Herdr's native lifecycle events:
-   - `workspace.focused`: Pushes the focused workspace to the top of the Most Recently Used (MRU) stack.
-   - `workspace.closed`: Prunes the closed workspace from history.
-   - `tab.focused`: Caches the active tab ID for the current workspace.
-   - `tab.closed`: Invalidates cached tabs when closed.
-   - `startup`: Reconciles live workspaces and warms the stack on Herdr launch or live server handoff.
+1. **Event Hooks:** Subscribes to Herdr lifecycle events:
+   - `workspace.focused`: Inserts the focused workspace at the top of the MRU stack.
+   - `workspace.closed`: Removes the closed workspace from history.
+   - `tab.focused`: Records the active tab ID for the current workspace.
+   - `tab.closed`: Clears the recorded tab reference when that tab is closed.
+   - `startup`: Synchronizes initial workspace and tab state when Herdr starts or reloads.
 2. **Toggle Action (`akpw.last-workspace.toggle`):**
-   - Fetches live workspaces to ensure all targets are valid.
-   - Swaps the top two elements of the MRU stack (`stack[0]` ↔ `stack[1]`).
-   - Focuses the previous workspace, followed by its remembered tab.
-3. **Storage:** Keeps runtime state in `~/.local/state/herdr/plugins/akpw.last-workspace/state.json` (as directed by `HERDR_PLUGIN_STATE_DIR`).
+   - Queries live workspaces via `herdr workspace list`.
+   - Validates that the targets currently exist.
+   - Swaps the top two entries in the MRU stack (`stack[0]` ↔ `stack[1]`).
+   - Focuses the target workspace, followed by its last active tab.
+3. **Storage:** Persists state to `~/.local/state/herdr/plugins/akpw.last-workspace/state.json` (or the path defined by `HERDR_PLUGIN_STATE_DIR`).
 
 ---
 
-## Why Not Existing Alternatives?
+## Comparison with Existing Plugins
 
 | Feature | `akpw/herdr-last-workspace` | `third774/herdr-last-workspace` | `pedrobarco/herdr-lastfocus` |
 | :--- | :---: | :---: | :---: |
-| **Language** | **Python 3 stdlib** | Rust (requires `cargo`) | Go (requires `go`) |
-| **Tab Restoration** | ✅ Yes | ❌ No | ❌ No |
-| **Consecutive A ↔ B Toggle** | ✅ Yes | ❌ Clears target on repeat | ✅ Yes |
-| **Execution Model** | Native Hooks (~70ms) | Native Hooks | Background Daemon |
-| **No Compilation Required** | ✅ Yes (zero build) | ❌ No (requires cargo / ~500MB toolchain) | ❌ No (requires go compiler) |
+| **Language** | Python 3 stdlib | Rust (requires `cargo`) | Go (requires `go`) |
+| **Tab Restoration** | Yes | No | No |
+| **Consecutive A ↔ B Toggle** | Yes | Clears target on repeat | Yes |
+| **Execution Model** | Native Hooks | Native Hooks | Background Daemon |
+| **No Compilation Required** | Yes (zero build) | No (requires cargo / ~500MB toolchain) | No (requires go compiler) |
 
 ---
 

@@ -1,0 +1,31 @@
+id = "akpw.last-workspace"
+name = "Last Workspace"
+version = "0.2.0"
+min_herdr_version = "0.7.0"
+description = "Toggle between workspaces using a tmux-style MRU stack and restore active tabs."
+platforms = ["linux", "macos"]
+
+[[startup]]
+command = ["python3", "last_workspace.py", "startup"]
+
+[[actions]]
+id = "toggle"
+title = "Last workspace"
+contexts = ["global", "workspace"]
+command = ["python3", "last_workspace.py", "toggle"]
+
+[[events]]
+on = "workspace.focused"
+command = ["python3", "last_workspace.py", "focused"]
+
+[[events]]
+on = "workspace.closed"
+command = ["python3", "last_workspace.py", "closed"]
+
+[[events]]
+on = "tab.focused"
+command = ["python3", "last_workspace.py", "tab_focused"]
+
+[[events]]
+on = "tab.closed"
+command = ["python3", "last_workspace.py", "tab_closed"]
